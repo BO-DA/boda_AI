@@ -61,7 +61,7 @@ def extract_frames(video_path, output_folder, frame_rate=1):
     print(f"Extracted frames at {frame_rate}fps and saved to '{output_folder}'")
 
 
-# 30fps로 이미지 추출
+# 5fps로 이미지 추출
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--video_path')
@@ -76,6 +76,6 @@ def main():
 
     extract_frames(video_path, output_folder, frame_rate=frame_rate)
 
-
+# main 실행
 if __name__ == "__main__":
     main()
