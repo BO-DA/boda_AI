@@ -62,7 +62,6 @@ def extract_frames(video_path, output_folder, frame_rate=1):
 
 
 # 30fps로 이미지 추출
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--video_path')
