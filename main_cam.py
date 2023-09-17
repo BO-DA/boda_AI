@@ -3,6 +3,13 @@ import cv2
 from SafeZone import Safe_Zone 
 import argparse
 import numpy as np
+from ultralytics import YOLO
+
+CONFIDENCE_THRESHOLD = 0.6
+GREEN = (0, 255, 0)
+WHITE = (255, 255, 255)
+
+class_list = ["bicycle", "car", "bollard", "pole", "tree_trunk", "scooter", "movable_signage"]
 
 def extract_masked_region(image, mask):
     # Mask 값이 1인 픽셀만 추출하여 새로운 이미지 생성
@@ -12,6 +19,7 @@ def extract_masked_region(image, mask):
     return masked_image
 
 webcam = cv2.VideoCapture(0)
+model = YOLO('yolo_pt/best_new.pt')
 
 if not webcam.isOpened():
     print("Could not open webcam")
@@ -45,6 +53,17 @@ while webcam.isOpened():
         masks_save = np.squeeze(masks_save)
         masked_region = extract_masked_region(frame, masks_save)
 
+        detection = model(frame)[0]
+        for data in detection.boxes.data.tolist():
+            confidence = float(data[4])
+            if confidence < CONFIDENCE_THRESHOLD:
+                continue
+
+            xmin, ymin, xmax, ymax = int(data[0]), int(data[1]), int(data[2]), int(data[3])
+            label = int(data[5])
+            cv2.rectangle(frame, (xmin, ymin), (xmax, ymax), GREEN, 2)
+            cv2.putText(frame, class_list[label] + ' ' + str(round(confidence, 2)) + '%', (xmin, ymin), cv2.FONT_ITALIC,
+                        1, WHITE, 2)
         
         if frame.shape[1]/2 < pr_x1:
             print('right')
