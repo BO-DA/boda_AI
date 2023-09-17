@@ -8,12 +8,14 @@ sys.path.append("..")
 from MobileSAM.mobile_sam import sam_model_registry, SamPredictor
 from VanishingPoint.main import GetLines,GetVanishingPoint
 import math
+from ultralytics import YOLO
 
 # SAM
 sam_checkpoint = "MobileSAM/weights/mobile_sam.pt"
 model_type = "vit_t"
 device = "cuda" if torch.cuda.is_available() else "cpu"
 sam = sam_model_registry[model_type](checkpoint=sam_checkpoint)
+det_model = YOLO('./best_new.pt')
 
 def show_mask2(mask):
     color = np.array([30, 144, 255, 0.6])
@@ -66,6 +68,14 @@ class Safe_Zone():
 
     def __init__(self,image):
         self.image = image
+        
+    def det(self, image):
+        pred = model.predict(image, show = True)
+        x_lst = []
+        for i in pred[0].boxes:
+            if i.xyxy[0][3]>= image.shape[0]/2:
+                x_lst.append((i.xyxy[0][0]+i.xyxy[0][2])/2)
+        return x_lst
     
     def SAM(self):
         image = cv2.cvtColor(self.image, cv2.COLOR_BGR2RGB)
@@ -132,7 +142,9 @@ class Safe_Zone():
 
     
     def Angular_Bisector(self,masks2,VanishingPoint,pr_mask = None, pr_x1 = None, pr_x2 = None):
-
+        
+        x_lst = det(self.image)
+        
         mask_x = np.sum(masks2,axis = 1)[0]
         for i in range(len(mask_x[::-1])):
             if mask_x[::-1][i] !=0:
@@ -157,16 +169,25 @@ class Safe_Zone():
 
         m1,b1 = fline(mid_x,mid_y,min_x,min_y)
         m2,b2 = fline(mid_x,mid_y,max_x,max_y)
+        box_left, box_right = [], []
+        for i in x_lst:
+            if i<mid_x:
+                box_left.append(i)
+            else:
+                box_right.append(i)
+        
+        box_left_max = max(box_left)
+        box_right_min = min(box_right)
 
         mm, bm = bisecting_line(m1, m2, b1, b2,mid_x,mid_y)
         x_mid = -bm/mm;
-        x1 = (np.array(image).shape[0]-b1)/(m1+1e-12)
-        x2 = (np.array(image).shape[0]-b2)/(m2+1e-12)
+        x1 = max((np.array(image).shape[0]-b1)/(m1+1e-12),box_left_max)
+        x2 = min((np.array(image).shape[0]-b2)/(m2+1e-12),box_right_min)
 
         draw = ImageDraw.Draw(image)
         if pr_mask is None:
-            draw.line(((x1+x_mid*2)/3,masks2.shape[1],(x1+x_mid)/2+100,masks2.shape[1]-200), fill="yellow", width=5)
-            draw.line(((x2+x_mid*2)/3,masks2.shape[1],(x2+x_mid)/2-100,masks2.shape[1]-200), fill="yellow", width=5)
+            draw.line(((x1+x_mid*2)/3,masks2.shape[1],(x1+x_mid*2)/3+100,masks2.shape[1]-200), fill="yellow", width=5)
+            draw.line(((x2+x_mid*2)/3,masks2.shape[1],(x2+x_mid*2)/3-100,masks2.shape[1]-200), fill="yellow", width=5)
             pr_mask = masks2
             pr_x1 = max(0,((x1+x_mid*2)/3))
             pr_x2 = min(np.array(image).shape[0],((x2+x_mid*2)/3))
@@ -180,6 +201,9 @@ class Safe_Zone():
             pr_mask = masks2
             pr_x1 = max(0,(((x1+x_mid*2)/3)*0.2+pr_x1*0.8))
             pr_x2 = min(np.array(image).shape[0],(((x2+x_mid*2)/3)*0.2+pr_x2*0.8))
+
+
+
 
         return cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR), pr_mask, pr_x1, pr_x2
 
