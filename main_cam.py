@@ -1,7 +1,6 @@
 import cv2
 import cv2
 from SafeZone import Safe_Zone 
-import argparse
 import numpy as np
 from ultralytics import YOLO
 
@@ -24,7 +23,7 @@ if not webcam.isOpened():
     print("Could not open webcam")
     exit()
 
-model = YOLO('yolo_pt/best_new.pt')
+model = YOLO('yolo_pt/best.pt')
 
 consecutive_directions = []
 max_consecutive_directions = 5
@@ -89,14 +88,11 @@ while webcam.isOpened():
         elif consecutive_directions.count('left') >= max_consecutive_directions:
             print('Left')
         else:
-            print('Noraml')
+            print('Normal')
         
         cv2.circle(masked_region, (int(vs[0]), int(vs[1])), 10, (0, 0, 255), -1)
         image_rgb = cv2.cvtColor(masked_region, cv2.COLOR_BGR2RGB)
-        frame_filename = f"seg_out/frame_{str(frame_index).zfill(6)}_{dirg}.jpg"
-        cv2.imwrite(frame_filename, image_rgb)
         
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         cv2.imshow("test", frame)
         frame_index += 1
 

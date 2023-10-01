@@ -65,7 +65,7 @@ def extract_masked_region(image, mask):
     return masked_image
 
 def detection(image):
-    pred = det_model.predict(image, show = True)
+    pred = det_model.predict(image)
     x_lst = []
     for i in pred[0].boxes:
         if i.xyxy[0][3]>= image.shape[0]/2:
@@ -163,7 +163,7 @@ class Safe_Zone():
                 min_y = i
                 break
         
-        image = Image.fromarray(self.image)
+        image = self.image
 
         mid_x, mid_y =  int(VanishingPoint[0]), max(0,int(VanishingPoint[1])-300)
 
@@ -182,29 +182,73 @@ class Safe_Zone():
         box_right_min = min(box_right)
 
         mm, bm = bisecting_line(m1, m2, b1, b2,mid_x,mid_y)
-        x_mid = -bm/mm;
-        x1 = max((np.array(image).shape[0]-b1)/(m1+1e-12),box_left_max)
-        x2 = min((np.array(image).shape[0]-b2)/(m2+1e-12),box_right_min)
+        x_mid = -bm/mm
+        x1 = max((image.shape[0]-b1)/(m1+1e-12),box_left_max)
+        x2 = min((image.shape[0]-b2)/(m2+1e-12),box_right_min)
 
-        draw = ImageDraw.Draw(image)
+        color = (255, 0, 255)
+        alpha = 0.2
+        bgra_color = (*color, int(255 * alpha))
+        height, width, channels = image.shape
+        bgra_image = np.zeros((height, width, 3), dtype=np.uint8)
+
         if pr_mask is None:
-            draw.line(((x1+x_mid*2)/3,masks2.shape[1],(x1+x_mid*2)/3+100,masks2.shape[1]-200), fill="yellow", width=5)
-            draw.line(((x2+x_mid*2)/3,masks2.shape[1],(x2+x_mid*2)/3-100,masks2.shape[1]-200), fill="yellow", width=5)
+            # pts = np.array([[int((x1 + x_mid) // 2), int(masks2.shape[1])],[int((x1 + x_mid) // 2), int(masks2.shape[1] - 200)],[int((x2 + x_mid) // 2), int(masks2.shape[1])],[int((x2 + x_mid) // 2), int(masks2.shape[1] - 200)]])
+            pts = np.array([[min(int((x1 + x_mid) // 2+50),int((x2 + x_mid) // 2-50)), int(masks2.shape[1] - 200)],[max(int((x1 + x_mid) // 2+50),int((x2 + x_mid) // 2-50)), int(masks2.shape[1] - 200)],
+                            [int((x2 + x_mid) // 2), int(masks2.shape[1])],[int((x1 + x_mid) // 2), int(masks2.shape[1])]])
+            cv2.fillConvexPoly(bgra_image, pts, bgra_color)
+            cv2.arrowedLine(bgra_image, (int(mid_x), int(masks2.shape[1])), (int((x1+x2)//2),300), (255,0,0), 5)
             pr_mask = masks2
-            pr_x1 = max(0,((x1+x_mid*2)/3))
-            pr_x2 = min(np.array(image).shape[0],((x2+x_mid*2)/3))
-        elif (pr_mask*masks2).sum()/pr_mask.sum() <0.9:
-            draw.line((pr_x1,masks2.shape[1],pr_x1+100,masks2.shape[1]-200), fill="yellow", width=5)
-            draw.line((pr_x2,masks2.shape[1],pr_x2-100,masks2.shape[1]-200), fill="yellow", width=5)
+            pr_x1 = max(0, ((x1 + x_mid) // 2))
+            pr_x2 = min(image.shape[1], ((x2 + x_mid) // 2))
+            image = cv2.addWeighted(image, 1, bgra_image, 1, 0)
+        elif (pr_mask * masks2).sum() / pr_mask.sum() < 0.9:
+            # pts = np.array([[int(pr_x1), int(masks2.shape[1])],[int(pr_x1), int(masks2.shape[1] - 200)],[int(pr_x2), int(masks2.shape[1])],[int(pr_x2), int(masks2.shape[1] - 200)]])
+            pts = np.array([[min(int(pr_x1+50),int(pr_x2-50)), int(masks2.shape[1] - 200)],[max(int(pr_x1+50),int(pr_x2-50)), int(masks2.shape[1] - 200)],
+                            [int(pr_x2), int(masks2.shape[1])],[int(pr_x1), int(masks2.shape[1])]])
+            cv2.fillConvexPoly(bgra_image, pts, bgra_color)
+            cv2.arrowedLine(bgra_image, (int(mid_x), int(masks2.shape[1])), (int((x1+x2)//2),300), (255,0,0), 5)
             pr_mask = masks2
+            image = cv2.addWeighted(image, 1, bgra_image, 1, 0)
         else:
-            draw.line((((x1+x_mid*2)/3)*0.2+pr_x1*0.8,masks2.shape[1],((x1+x_mid*2)/3)*0.2+pr_x1*0.8+100,masks2.shape[1]-200), fill="yellow", width=5)
-            draw.line((((x2+x_mid*2)/3)*0.2+pr_x2*0.8,masks2.shape[1],((x2+x_mid*2)/3)*0.2+pr_x2*0.8-100,masks2.shape[1]-200), fill="yellow", width=5)
+            # pts = np.array([[int(((x1 + x_mid) // 2) * 0.2 + pr_x1 * 0.8), int(masks2.shape[1])],[int(((x1 + x_mid) // 2) * 0.2 + pr_x1 * 0.8), int(masks2.shape[1] - 200)],
+            #                 [int(((x2 + x_mid) // 2) * 0.2 + pr_x2 * 0.8), int(masks2.shape[1])],[int(((x2 + x_mid) // 2) * 0.2 + pr_x2 * 0.8), int(masks2.shape[1] - 200)]])
+            pts = np.array([[min(int(((x1 + x_mid) // 2) * 0.2 + pr_x1 * 0.8+50),int(((x2 + x_mid) // 2) * 0.2 + pr_x2 * 0.8-50)), int(masks2.shape[1] - 200)],[max(int(((x1 + x_mid) // 2) * 0.2 + pr_x1 * 0.8+50),int(((x2 + x_mid) // 2) * 0.2 + pr_x2 * 0.8-50)), int(masks2.shape[1] - 200)],
+                            [int(((x2 + x_mid) // 2) * 0.2 + pr_x2 * 0.8), int(masks2.shape[1])],[int(((x1 + x_mid) // 2) * 0.2 + pr_x1 * 0.8), int(masks2.shape[1])]])
+            cv2.fillConvexPoly(bgra_image, pts, bgra_color)
+            cv2.arrowedLine(bgra_image, (int(mid_x), int(masks2.shape[1])), (int((x1+x2)//2),300), (255,0,0), 5)
             pr_mask = masks2
-            pr_x1 = max(0,(((x1+x_mid*2)/3)*0.2+pr_x1*0.8))
-            pr_x2 = min(np.array(image).shape[0],(((x2+x_mid*2)/3)*0.2+pr_x2*0.8))
+            pr_x1 = max(0, (((x1 + x_mid) // 2) * 0.2 + pr_x1 * 0.8))
+            pr_x2 = min(image.shape[1], (((x2 + x_mid) // 2) * 0.2 + pr_x2 * 0.8))
+            image = cv2.addWeighted(image, 1, bgra_image, 1, 0)
 
+        return image, pr_mask, pr_x1, pr_x2
+    
+        #     if pr_mask is None:
+        #     pts = np.array([[int((x1 + x_mid) // 2), int(masks2.shape[1])],[int((x1 + x_mid) // 2), int(masks2.shape[1] - 200)],[int((x2 + x_mid) // 2), int(masks2.shape[1])],[int((x2 + x_mid) // 2), int(masks2.shape[1] - 200)]])
+        #     cv2.polylines(image, [pts[1],pts[3],pts[2],pts[0]], True, (255, 0, 255), 2)
+        #     cv2.line(image, (pts[0]), (pts[1]), (0, 255, 255), 5)
+        #     cv2.line(image, (pts[2]), (pts[3]), (0, 255, 255), 5)
+        #     cv2.arrowedLine(image, (int(mid_x), int(masks2.shape[1])), (int((x1+x2)//2),300), (255,0,0), 5)
+        #     pr_mask = masks2
+        #     pr_x1 = max(0, ((x1 + x_mid) // 2))
+        #     pr_x2 = min(image.shape[1], ((x2 + x_mid) // 2))
+        # elif (pr_mask * masks2).sum() / pr_mask.sum() < 0.9:
+        #     pts = np.array([[int(pr_x1), int(masks2.shape[1])],[int(pr_x1), int(masks2.shape[1] - 200)],[int(pr_x2), int(masks2.shape[1])],[int(pr_x2), int(masks2.shape[1] - 200)]])
+        #     cv2.polylines(image, [pts[1],pts[3],pts[2],pts[0]], True, (255, 0, 255), 2)
+        #     cv2.line(image, (pts[0]), (pts[1]), (0, 255, 255), 5)
+        #     cv2.line(image, (pts[2]), (pts[3]), (0, 255, 255), 5)
+        #     cv2.arrowedLine(image, (int(mid_x), int(masks2.shape[1])), (int((x1+x2)//2),300), (255,0,0), 5)
+        #     pr_mask = masks2
+        # else:
+        #     pts = np.array([[int(((x1 + x_mid) // 2) * 0.2 + pr_x1 * 0.8), int(masks2.shape[1])],[int(((x1 + x_mid) // 2) * 0.2 + pr_x1 * 0.8), int(masks2.shape[1] - 200)],
+        #                     [int(((x2 + x_mid) // 2) * 0.2 + pr_x2 * 0.8), int(masks2.shape[1])],[int(((x2 + x_mid) // 2) * 0.2 + pr_x2 * 0.8), int(masks2.shape[1] - 200)]])
+        #     cv2.polylines(image, [pts[1],pts[3],pts[2],pts[0]], True, (255, 0, 255), 2)
+        #     cv2.line(image, (pts[0]), (pts[1]), (0, 255, 255), 5)
+        #     cv2.line(image, (pts[2]), (pts[3]), (0, 255, 255), 5)
+        #     cv2.arrowedLine(image, (int(mid_x), int(masks2.shape[1])), (int((x1+x2)//2),300), (255,0,0), 5)
+        #     pr_mask = masks2
+        #     pr_x1 = max(0, (((x1 + x_mid) // 2) * 0.2 + pr_x1 * 0.8))
+        #     pr_x2 = min(image.shape[1], (((x2 + x_mid) // 2) * 0.2 + pr_x2 * 0.8))
 
-
-        return cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR), pr_mask, pr_x1, pr_x2
-
+        # return image, pr_mask, pr_x1, pr_x2
