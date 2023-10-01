@@ -1,4 +1,5 @@
 import cv2
+import cv2
 from SafeZone import Safe_Zone 
 import argparse
 import numpy as np
@@ -17,12 +18,16 @@ def extract_masked_region(image, mask):
 
     return masked_image
 
-webcam = cv2.VideoCapture("rtsp://127.0.0.1:8554/boda")
-model = YOLO('yolo_pt/best.pt')
+webcam = cv2.VideoCapture(0)
 
 if not webcam.isOpened():
     print("Could not open webcam")
     exit()
+
+model = YOLO('yolo_pt/best_new.pt')
+
+consecutive_directions = []
+max_consecutive_directions = 5
 
 while webcam.isOpened():
     status, frame = webcam.read()
@@ -42,7 +47,7 @@ while webcam.isOpened():
                 vs = [int(frame.shape[0]/2),int(frame.shape[1]/2)]
         else:
             vs_previous = vs
-
+            
         if frame_index == 0:
             frame, pr_mask, pr_x1, pr_x2 = safe.Angular_Bisector(masks2,vs)
         else:
@@ -57,27 +62,38 @@ while webcam.isOpened():
             confidence = float(data[4])
             if confidence < CONFIDENCE_THRESHOLD:
                 continue
-
+        
             xmin, ymin, xmax, ymax = int(data[0]), int(data[1]), int(data[2]), int(data[3])
             label = int(data[5])
             cv2.rectangle(frame, (xmin, ymin), (xmax, ymax), GREEN, 2)
-            cv2.putText(frame, class_list[label] + ' ' + str(round(confidence, 2)) + '%', (xmin, ymin), cv2.FONT_ITALIC,
-                        1, WHITE, 2)
+            cv2.putText(frame, class_list[label]+' '+str(round(confidence, 2))+'%', (xmin, ymin), cv2.FONT_ITALIC, 1, WHITE, 2)
+
         
         if frame.shape[1]/2 < pr_x1:
-            print('right')
+            #print('right')
             dirg = 'right'
         elif frame.shape[1]/2 > pr_x2:
-            print('left')
+            #print('left')
             dirg = 'left'
         else:
-            print('Normal')
+            #print('Normal')
             dirg = 'Normal'
+        
+        consecutive_directions.append(dirg)
+        if len(consecutive_directions) > max_consecutive_directions:
+            consecutive_directions.pop(0)  # Remove the oldest direction
+
+        # Check if there are 5 consecutive "right" or "left" directions
+        if consecutive_directions.count('right') >= max_consecutive_directions:
+            print('Right direction detected for 5 consecutive frames!')
+        elif consecutive_directions.count('left') >= max_consecutive_directions:
+            print('Left direction detected for 5 consecutive frames!')
         
         cv2.circle(masked_region, (int(vs[0]), int(vs[1])), 10, (0, 0, 255), -1)
         image_rgb = cv2.cvtColor(masked_region, cv2.COLOR_BGR2RGB)
         frame_filename = f"seg_out/frame_{str(frame_index).zfill(6)}_{dirg}.jpg"
         cv2.imwrite(frame_filename, image_rgb)
+        
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         cv2.imshow("test", frame)
         frame_index += 1

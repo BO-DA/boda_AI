@@ -34,6 +34,9 @@ def extract_frames(video_path, output_folder, frame_rate=1):
     frame_index = 0
     model = YOLO('yolo_pt/best_new.pt')
 
+    consecutive_directions = []
+    max_consecutive_directions = 5
+
     while True:
         # 프레임 읽기
         ret, frame = cap.read()
@@ -81,14 +84,26 @@ def extract_frames(video_path, output_folder, frame_rate=1):
             cv2.putText(frame, class_list[label]+' '+str(round(confidence, 2))+'%', (xmin, ymin), cv2.FONT_ITALIC, 1, WHITE, 2)
 
         if frame.shape[1]/2 < pr_x1:
-            print('right')
+            #print('right')
             dirg = 'right'
         elif frame.shape[1]/2 > pr_x2:
-            print('left')
+            #print('left')
             dirg = 'left'
         else:
-            print('Normal')
+            #print('Normal')
             dirg = 'Normal'
+
+        consecutive_directions.append(dirg)
+        if len(consecutive_directions) > max_consecutive_directions:
+            consecutive_directions.pop(0)  # Remove the oldest direction
+
+        # Check if there are 5 consecutive "right" or "left" directions
+        if consecutive_directions.count('right') >= max_consecutive_directions:
+            print('Right direction detected for 5 consecutive frames!')
+        elif consecutive_directions.count('left') >= max_consecutive_directions:
+            print('Left direction detected for 5 consecutive frames!')
+        
+        
 
         cv2.circle(masked_region, (int(vs[0]), int(vs[1])), 10, (0, 0, 255), -1)
         image_rgb = cv2.cvtColor(masked_region, cv2.COLOR_BGR2RGB)
