@@ -15,7 +15,7 @@ sam_checkpoint = "MobileSAM/weights/mobile_sam.pt"
 model_type = "vit_t"
 device = "cuda" if torch.cuda.is_available() else "cpu"
 sam = sam_model_registry[model_type](checkpoint=sam_checkpoint)
-det_model = YOLO('yolo_pt/best_new.pt')
+det_model = YOLO('yolo_pt/best.pt')
 
 def show_mask2(mask):
     color = np.array([30, 144, 255, 0.6])

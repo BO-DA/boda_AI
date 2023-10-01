@@ -1,5 +1,4 @@
 import cv2
-import cv2
 from SafeZone import Safe_Zone 
 import argparse
 import numpy as np
@@ -18,8 +17,8 @@ def extract_masked_region(image, mask):
 
     return masked_image
 
-webcam = cv2.VideoCapture(0)
-model = YOLO('yolo_pt/best_new.pt')
+webcam = cv2.VideoCapture("rtsp://127.0.0.1:8554/boda")
+model = YOLO('yolo_pt/best.pt')
 
 if not webcam.isOpened():
     print("Could not open webcam")
