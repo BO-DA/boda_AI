@@ -85,9 +85,11 @@ while webcam.isOpened():
 
         # Check if there are 5 consecutive "right" or "left" directions
         if consecutive_directions.count('right') >= max_consecutive_directions:
-            print('Right direction detected for 5 consecutive frames!')
+            print('Right')
         elif consecutive_directions.count('left') >= max_consecutive_directions:
-            print('Left direction detected for 5 consecutive frames!')
+            print('Left')
+        else:
+            print('Noraml')
         
         cv2.circle(masked_region, (int(vs[0]), int(vs[1])), 10, (0, 0, 255), -1)
         image_rgb = cv2.cvtColor(masked_region, cv2.COLOR_BGR2RGB)
