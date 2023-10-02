@@ -48,9 +48,9 @@ while webcam.isOpened():
             vs_previous = vs
             
         if frame_index == 0:
-            frame, pr_mask, pr_x1, pr_x2 = safe.Angular_Bisector(masks2,vs)
+            frame, pr_mask, pr_x1, pr_x2, y1, y2, x3, x4, y3, y4 = safe.Angular_Bisector(masks2,vs)
         else:
-            frame, pr_mask, pr_x1, pr_x2 = safe.Angular_Bisector(masks2,vs,pr_mask,pr_x1,pr_x2)
+            frame, pr_mask, pr_x1, pr_x2, y1, y2, x3, x4, y3, y4 = safe.Angular_Bisector(masks2,vs,pr_mask,pr_x1,pr_x2)
         
         masks_save = np.expand_dims(masks2, axis=2)
         masks_save = np.squeeze(masks_save)
@@ -78,6 +78,7 @@ while webcam.isOpened():
             #print('Normal')
             dirg = 'Normal'
         
+        rt_dirg = ""
         consecutive_directions.append(dirg)
         if len(consecutive_directions) > max_consecutive_directions:
             consecutive_directions.pop(0)  # Remove the oldest direction
@@ -85,16 +86,23 @@ while webcam.isOpened():
         # Check if there are 5 consecutive "right" or "left" directions
         if consecutive_directions.count('right') >= max_consecutive_directions:
             print('Right')
+            rt_dirg = 'Right'
         elif consecutive_directions.count('left') >= max_consecutive_directions:
             print('Left')
+            rt_dirg = 'Left'
         else:
             print('Normal')
+            rt_dirg = 'Normal'
         
         cv2.circle(masked_region, (int(vs[0]), int(vs[1])), 10, (0, 0, 255), -1)
         image_rgb = cv2.cvtColor(masked_region, cv2.COLOR_BGR2RGB)
         
         cv2.imshow("test", frame)
         frame_index += 1
+
+        f = open('./temp.txt','w')
+        f.write(f'{pr_x1} {y1} {pr_x2} {y2} {x3} {y3} {x4} {y4} {rt_dirg}')
+        f.close()
 
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
