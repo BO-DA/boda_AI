@@ -17,7 +17,7 @@ def extract_masked_region(image, mask):
 
     return masked_image
 
-webcam = cv2.VideoCapture(0)
+webcam = cv2.VideoCapture("rtsp://127.0.0.1:8554/boda")
 
 if not webcam.isOpened():
     print("Could not open webcam")
@@ -100,7 +100,7 @@ while webcam.isOpened():
         cv2.imshow("test", frame)
         frame_index += 1
 
-        f = open('./temp.txt','w')
+        f = open('./res.txt','w')
         f.write(f'{pr_x1} {y1} {pr_x2} {y2} {x3} {y3} {x4} {y4} {rt_dirg}')
         f.close()
 
