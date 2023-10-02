@@ -38,6 +38,7 @@ while webcam.isOpened():
         save_mask, masks2 = safe.SAM()
 
         vs = safe.VanishingPoint_Triangle(masks2)
+        detection = model(frame)[0]
 
         if vs is None or vs[0] == 0 or vs[1] == 0:
             try:
@@ -56,7 +57,6 @@ while webcam.isOpened():
         masks_save = np.squeeze(masks_save)
         masked_region = extract_masked_region(frame, masks_save)
 
-        detection = model(frame)[0]
         for data in detection.boxes.data.tolist():
             confidence = float(data[4])
             if confidence < CONFIDENCE_THRESHOLD:

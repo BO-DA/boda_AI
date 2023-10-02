@@ -10,6 +10,9 @@ from VanishingPoint.main import GetLines,GetVanishingPoint
 import math
 from ultralytics import YOLO
 
+CONFIDENCE_THRESHOLD = 0.6
+
+
 # SAM
 sam_checkpoint = "MobileSAM/weights/mobile_sam.pt"
 model_type = "vit_t"
@@ -67,6 +70,8 @@ def detection(image):
     pred = det_model.predict(image)
     x_lst = []
     for i in pred[0].boxes:
+        if i.conf < CONFIDENCE_THRESHOLD:
+            continue
         if i.xyxy[0][3]>= image.shape[0]/2:
             x_lst.append((i.xyxy[0][0]+i.xyxy[0][2])/2)
     return x_lst
@@ -182,8 +187,8 @@ class Safe_Zone():
 
         mm, bm = bisecting_line(m1, m2, b1, b2,mid_x,mid_y)
         x_mid = (int(masks2.shape[1])-bm)/mm
-        x1 = max((image.shape[0]-b1)/(m1+1e-12),box_left_max)
-        x2 = min((image.shape[0]-b2)/(m2+1e-12),box_right_min)
+        x1 = max((image.shape[0]-b1)/(m1+1e-12),box_left_max) #(image.shape[0]-b1)/(m1+1e-12)
+        x2 = min((image.shape[0]-b2)/(m2+1e-12),box_right_min) #(image.shape[0]-b2)/(m2+1e-12)
 
         color = (255, 0, 255)
         alpha = 0.2
